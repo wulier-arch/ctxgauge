@@ -58,12 +58,30 @@ export function analyze(blocks, options = {}) {
     shingleSize: 5,
     middleFrom: 0.3,
     middleTo: 0.7,
+    // 硬约束位置的分母口径：
+    //   block      按块序号推进的 offset / 原文总长（历史行为，含块间不存在的空白）
+    //   normalized 归一化文本里的流式位置 / 归一化后总长（位置是真实的字符偏移）
+    // 两者只在块首有空白时不同，但归一化口径给出的百分比才对得上「文本里第几个字」。
+    offsetMode: "block",
     maxNearPairs: 200000,
     ...options,
   };
 
+  if (opts.offsetMode !== "block" && opts.offsetMode !== "normalized") {
+    throw new Error(`offsetMode 只能是 block 或 normalized，得到 ${opts.offsetMode}`);
+  }
+
   const totalChars = blocks.reduce((sum, b) => sum + b.text.length, 0);
   if (totalChars === 0) throw new Error("没有可分析的文本。");
+  // 归一化口径的流式位置表：第 i 块的首个字符在归一化拼接串里的偏移。
+  const normalized = opts.offsetMode === "normalized";
+  const streamOffsets = [];
+  let streamTotal = 0;
+  for (const block of blocks) {
+    const flat = normalizeText(block.text);
+    streamOffsets.push(streamTotal);
+    streamTotal += flat.length;
+  }
 
   /* ---------------------------------------------------------- 来源占比 */
   const byRole = {};
@@ -157,16 +175,31 @@ export function analyze(blocks, options = {}) {
   const nearWasted = nearGroups.reduce((sum, g) => sum + g.wasted, 0);
 
   /* -------------------------------------------------------- 硬约束位置 */
+  // 句子切分与位置口径解耦：
+  //   block      —— 位置按块序号推进的 offset / 原文总长（历史行为）
+  //   normalized —— 位置是归一化拼接串里的真实字符偏移 / 归一化总长
+  // 块首的空白在两种口径下的归属不同，其余情况两者完全一致。
+  const SENTENCE = /[^。！？；!?;\n]+[。！？；!?;\n]?/g;
   const constraints = [];
+  const constraintTotal = normalized ? streamTotal : totalChars;
   let offset = 0;
-  for (const block of blocks) {
-    const sentenceRe = /[^。！？；!?;\n]+[。！？；!?;\n]?/g;
-    let match;
-    while ((match = sentenceRe.exec(block.text)) !== null) {
+  for (const [k, block] of blocks.entries()) {
+    // 归一化串里句子之间的分隔符（换行等）已被折叠，推进前缀时要补回一个空格
+    const flat = normalized ? normalizeText(block.text) : "";
+    let flatCursor = 0;
+    for (const match of block.text.matchAll(SENTENCE)) {
       const sentence = match[0].trim();
       if (!sentence) continue;
       if (!CONSTRAINT_PATTERN.test(sentence)) continue;
-      const position = (offset + match.index) / totalChars;
+      let position;
+      if (normalized) {
+        const flatSentence = normalizeText(sentence);
+        const start = flat.indexOf(flatSentence, flatCursor);
+        flatCursor = start === -1 ? flatCursor : start + flatSentence.length;
+        position = (streamOffsets[k] + (start === -1 ? flatCursor : start)) / constraintTotal;
+      } else {
+        position = (offset + match.index) / constraintTotal;
+      }
       constraints.push({
         blockIndex: block.index,
         role: block.role,

@@ -50,3 +50,22 @@ test("工具输出占比过高时结论会点出来", () => {
   const text = verdict(result);
   assert.ok(text.includes("工具输出占了"));
 });
+
+test("top 选项控制冗余组与中段约束的展示条数", () => {
+  // 造 5 组互不相同的完全重复块，每组 2 份
+  const dup = (n) => `第${n}组重复内容，这是一段足够长的文本用于触发完全重复判定。`.repeat(3) + `标记${n}`;
+  const items = [];
+  for (let i = 0; i < 5; i++) {
+    items.push({ index: i, role: "tool", text: dup(i) });
+    items.push({ index: 100 + i, role: "tool", text: dup(i) });
+  }
+  const result = analyze(items);
+  assert.equal(result.exactGroups.length, 5);
+
+  const listed = (top) => {
+    const text = renderReport(result, { name: "demo.jsonl", format: "jsonl" }, { color: false, top });
+    return (text.match(/省 \d+ 字符/g) || []).length;
+  };
+  assert.equal(listed(3), 3);
+  assert.equal(listed(5), 5);
+});

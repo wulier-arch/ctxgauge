@@ -125,3 +125,34 @@ test("干净上下文不报假阳性", () => {
 test("空内容直接报错", () => {
   assert.throws(() => analyze([]), /没有可分析的文本/);
 });
+
+test("硬约束位置可以是去掉空白后的字符偏移，不再是块序号", () => {
+  // 拼接后的原文里，前面两处空白只在按块序号推进的 offset 里被算进去，
+  // 归一化后它们不存在——两种口径算出的位置不同，测试必须钉住差异。
+  const result = analyze(
+    make([
+      ["system", "   \n\n背景说明，先交代一下需求，这部分内容足够了。"],
+      ["user", "You must never commit directly to main."],
+    ]),
+    { offsetMode: "normalized" }
+  );
+  assert.equal(result.constraints.all.length, 1);
+  const c = result.constraints.all[0];
+  assert.equal(result.options.offsetMode, "normalized");
+  assert.ok(c.position >= 0 && c.position <= 1);
+  // 按块序号：约束句位于第二块开头，位置约等于长度占比，不会正好落在 1
+  const byBlock = analyze(
+    make([
+      ["system", "   \n\n背景说明，先交代一下需求，这部分内容足够了。"],
+      ["user", "You must never commit directly to main."],
+    ])
+  ).constraints.all[0].position;
+  assert.notEqual(c.position, byBlock);
+});
+
+test("offsetMode 只接受 block 与 normalized", () => {
+  assert.throws(
+    () => analyze(make(["足够长的内容".repeat(10)]), { offsetMode: "char" }),
+    /offsetMode/
+  );
+});

@@ -3,7 +3,7 @@
 > 先量清楚你的 LLM 上下文里**哪部分在浪费窗口**，再谈压缩。
 
 ![零依赖](https://img.shields.io/badge/%E4%BE%9D%E8%B5%96-0-4ade80)
-![测试](https://img.shields.io/badge/tests-28%20passing-4ade80)
+![测试](https://img.shields.io/badge/tests-31%20passing-4ade80)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-5fa04e)
 
@@ -49,7 +49,20 @@ cat session.jsonl | node src/cli.mjs
 
 # 机器可读
 node src/cli.mjs examples/agent-session.jsonl --json
+
+# 列出更多：前 8 组冗余、前 8 条中段约束（默认 3）
+node src/cli.mjs examples/agent-session.jsonl --top 8
 ```
+
+选项：
+
+| 参数 | 作用 |
+|---|---|
+| `--json` | 输出机器可读结果（`totals` / `wasted` / `exactGroups` / `nearGroups` / `constraints`） |
+| `--top N` | 报告里列多少组冗余、多少条中段约束，默认 3 |
+| `--offset block\|normalized` | 硬约束位置的口径。`block`（默认，历史行为）按块序号累加原文长度；`normalized` 按归一化文本里的真实字符偏移。块首有空白时两者不同，后者给出的百分比才对得上「文本里第几个字」 |
+
+认不出的选项会直接报错退出，不会被静默忽略。
 
 真实输出（就是上面那条命令跑出来的）：
 
@@ -127,7 +140,7 @@ ctxgauge · 上下文体检   agent-session.jsonl
 ## 工程约定
 
 ```bash
-npm test            # 28 个测试，零依赖
+npm test            # 31 个测试，零依赖
 npm run test:layout # 测试文件结构自检（新增模块必须有测试）
 npm run check:docs  # README 里的测试数、链接、版本号必须和代码一致
 ```
@@ -136,7 +149,7 @@ CI 在三档 Node（20 / 24 / 26）上跑同一套检查，另外确认零依赖
 
 ## 路线图
 
-- [ ] 支持按 `--top N` 调整展示条数（当前固定 3 / 5）
+- [x] 支持按 `--top N` 调整展示条数（已完成）
 - [ ] 导出 Markdown 报告，方便贴进 PR 描述
 - [ ] 与压缩工具对接：给出「压缩前后丢掉了哪些硬约束」的对比模式
 
