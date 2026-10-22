@@ -1,9 +1,25 @@
 /**
- * 浏览器版：和 CLI 共用同一份解析与体检代码（../src/*.mjs）。
+ * 浏览器版：和 CLI 共用同一份解析与体检代码。
  * 页面上没有任何网络请求——文件只在本地内存里过一遍。
+ *
+ * 关于 import 路径：本地开发时页面在 /web/ 下，源码在 ../src/；部署到
+ * GitHub Pages 的 /ctxgauge/ 下时，app.js 和 src/ 是同级，走 ./src/。
+ * 两种布局都要能用，所以按顺序试，谁先成功用谁——这样不用引入打包步骤。
  */
-import { parseInput } from "../src/parse.mjs";
-import { analyze } from "../src/analyze.mjs";
+async function loadModule(name) {
+  let lastError;
+  for (const base of ["./src/", "../src/"]) {
+    try {
+      return await import(base + name);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
+const { parseInput } = await loadModule("parse.mjs");
+const { analyze } = await loadModule("analyze.mjs");
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => n.toLocaleString("en-US");
