@@ -1,0 +1,33 @@
+{
+  "name": "ctxgauge",
+  "version": "0.1.0",
+  "description": "上下文体检：量清楚你的 LLM 上下文里有多少是重复的、关键约束落在了哪里。零依赖，不上传。",
+  "type": "module",
+  "bin": {
+    "ctxgauge": "src/cli.mjs"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "test:layout": "node scripts/check-test-layout.mjs",
+    "check:docs": "node scripts/check-docs.mjs",
+    "demo": "node src/cli.mjs examples/agent-session.jsonl"
+  },
+  "keywords": [
+    "llm",
+    "context-engineering",
+    "context-window",
+    "agent",
+    "tokens",
+    "cli",
+    "zero-dependency"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,55 @@
+name: Deploy demo to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "src/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: 部署在线 Demo
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 配置 Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
+      # 页面必须落在 _site 根目录，否则 https://wulier-arch.github.io/ctxgauge/
+      # 会因为找不到 index.html 而 404。
+      # src/ 也一起发布：网页里的 app.js 直接 import ../src/*.mjs，
+      # 和 CLI 共用同一份分析代码，不做打包。
+      - name: 准备发布目录
+        run: |
+          mkdir -p _site
+          cp web/index.html _site/index.html
+          cp web/app.js _site/app.js
+          cp web/og.png _site/og.png
+          cp -r src _site/src
+          cp README.md LICENSE _site/
+
+      - name: 上传静态站点
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+      - name: 发布
+        id: deployment
+        uses: actions/deploy-pages@v5

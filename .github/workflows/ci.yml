@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: 校验
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 20 是最低支持版本，24 是当前 LTS，26 是当前最新版
+        node: ['20', '24', '26']
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+
+      - name: 准备 Node ${{ matrix.node }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: 语法检查
+        run: |
+          for f in $(find src scripts test web -name "*.mjs" -o -name "*.js"); do
+            node --check "$f"
+          done
+
+      - name: 单元测试
+        run: node --test
+
+      - name: 测试文件结构自检
+        run: node scripts/check-test-layout.mjs
+
+      - name: 文档事实核查
+        # 检查项（编号对应 scripts/check-docs.mjs 的分段注释）：
+        #   1. 零依赖（package.json 无 dependencies / peerDependencies）
+        #   2. README 写的测试数 == 实际跑出来的测试数
+        #   3. package.json 的版本在 CHANGELOG 里有条目
+        #   4. README 的相对链接指向存在的文件
+        #   5. 不能宣称已发布到 npm（本包未发布）
+        run: node scripts/check-docs.mjs
+
+      - name: 确认零依赖
+        run: |
+          if [ -f package-lock.json ] || [ -d node_modules ]; then
+            echo "::error::本项目坚持零依赖，不应出现 package-lock.json 或 node_modules"
+            exit 1
+          fi
+
+      - name: 跑一遍示例
+        run: node src/cli.mjs examples/agent-session.jsonl > /dev/null
+
+      - name: 确认关键文件已提交
+        run: |
+          for f in README.md LICENSE CHANGELOG.md src/cli.mjs web/index.html; do
+            if [ ! -f "$f" ]; then
+              echo "::error::缺少关键文件 $f"
+              exit 1
+            fi
+          done

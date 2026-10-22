@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ctxgauge · 上下文体检</title>
+    <meta
+      name="description"
+      content="把对话记录拖进来，看你的 LLM 上下文里有多少是可证明的重复、关键约束落在了哪个位置。全部在本机计算，不上传。零依赖。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ctxgauge · 上下文体检" />
+    <meta
+      property="og:description"
+      content="量清楚哪部分在浪费上下文窗口：重复、近重复、以及压在中段的硬约束。本机计算，不上传。"
+    />
+    <meta property="og:image" content="https://wulier-arch.github.io/ctxgauge/og.png" />
+    <style>
+      :root {
+        --bg: #0b0e13;
+        --panel: #11161e;
+        --line: #232b36;
+        --text: #e6edf3;
+        --muted: #8b98a5;
+        --dim: #5c6773;
+        --green: #4ade80;
+        --amber: #fbbf24;
+        --red: #f87171;
+        --blue: #60a5fa;
+        --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--mono);
+        -webkit-font-smoothing: antialiased;
+      }
+      body {
+        padding: 40px 24px 80px;
+        background-image: radial-gradient(circle at 20% -10%, #1b2534 0%, transparent 55%),
+          radial-gradient(circle at 90% 0%, #1a2a24 0%, transparent 45%);
+        background-repeat: no-repeat;
+      }
+      .wrap {
+        max-width: 880px;
+        margin: 0 auto;
+      }
+      header {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0;
+        letter-spacing: 0.02em;
+      }
+      .tag {
+        font-size: 12px;
+        color: var(--dim);
+      }
+      .lede {
+        color: var(--muted);
+        font-size: 13.5px;
+        line-height: 1.7;
+        margin: 10px 0 26px;
+      }
+      .lede b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      #drop {
+        border: 1px dashed var(--line);
+        border-radius: 10px;
+        background: rgba(17, 22, 30, 0.7);
+        padding: 34px 24px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.15s ease, background 0.15s ease;
+      }
+      #drop.hot {
+        border-color: var(--green);
+        background: rgba(74, 222, 128, 0.06);
+      }
+      #drop .big {
+        font-size: 14px;
+        color: var(--text);
+      }
+      #drop .small {
+        font-size: 12px;
+        color: var(--dim);
+        margin-top: 8px;
+        line-height: 1.7;
+      }
+      #drop input {
+        display: none;
+      }
+      textarea {
+        width: 100%;
+        min-height: 110px;
+        margin-top: 14px;
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px;
+        font: inherit;
+        font-size: 12.5px;
+        line-height: 1.6;
+        resize: vertical;
+      }
+      textarea::placeholder {
+        color: var(--dim);
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      button {
+        font: inherit;
+        font-size: 12.5px;
+        padding: 8px 16px;
+        border-radius: 7px;
+        border: 1px solid var(--line);
+        background: #1a222c;
+        color: var(--text);
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--green);
+        color: var(--green);
+      }
+      button.primary {
+        background: var(--green);
+        color: #06210f;
+        border-color: var(--green);
+        font-weight: 600;
+      }
+      button.primary:hover {
+        filter: brightness(1.08);
+        color: #06210f;
+      }
+      .err {
+        color: var(--red);
+        font-size: 12.5px;
+        margin-top: 14px;
+        white-space: pre-wrap;
+        line-height: 1.7;
+      }
+      #result {
+        margin-top: 34px;
+        display: none;
+      }
+      .verdict {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: linear-gradient(180deg, #131a23, #0e131a);
+        padding: 26px 26px 22px;
+      }
+      .verdict .num {
+        font-size: 54px;
+        line-height: 1;
+        letter-spacing: -0.02em;
+        color: var(--green);
+      }
+      .verdict .num.warn {
+        color: var(--amber);
+      }
+      .verdict .num.bad {
+        color: var(--red);
+      }
+      .verdict .cap {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 10px;
+      }
+      .verdict .say {
+        font-size: 13px;
+        color: var(--text);
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        line-height: 1.8;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+        padding: 16px 18px;
+      }
+      .card .k {
+        font-size: 11px;
+        color: var(--dim);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .card .v {
+        font-size: 22px;
+        margin-top: 8px;
+      }
+      .card .n {
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 6px;
+        line-height: 1.6;
+      }
+      h2 {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--dim);
+        margin: 30px 0 12px;
+        font-weight: 600;
+      }
+      .barline {
+        display: grid;
+        grid-template-columns: 84px 1fr 84px 52px;
+        gap: 10px;
+        align-items: center;
+        font-size: 12.5px;
+        margin-bottom: 8px;
+      }
+      .barline .track {
+        display: block;
+        height: 8px;
+        background: #1b232d;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .barline .fill {
+        display: block;
+        height: 100%;
+        background: var(--blue);
+        border-radius: 4px;
+        min-width: 2px;
+      }
+      .barline .fill.tool {
+        background: var(--amber);
+      }
+      .barline .num {
+        text-align: right;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .axis-note {
+        font-size: 11px;
+        color: var(--dim);
+        margin-bottom: 8px;
+      }
+      .axis-note b {
+        color: var(--amber);
+        font-weight: 500;
+      }
+      .axis {
+        position: relative;
+        height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+      .axis .mid {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 30%;
+        width: 40%;
+        background: rgba(251, 191, 36, 0.14);
+        border-left: 1px solid rgba(251, 191, 36, 0.45);
+        border-right: 1px solid rgba(251, 191, 36, 0.45);
+      }
+      .axis .tick {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--muted);
+        transform: translateX(-1px);
+      }
+      .axis .tick.mid {
+        background: var(--amber);
+        width: 3px;
+      }
+      .axis .scale {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 3px;
+        display: flex;
+        justify-content: space-between;
+        padding: 0 6px;
+        font-size: 9.5px;
+        color: var(--dim);
+        pointer-events: none;
+      }
+      .item {
+        border-left: 2px solid var(--line);
+        padding: 2px 0 2px 14px;
+        margin-bottom: 14px;
+      }
+      .item .meta {
+        font-size: 11.5px;
+        color: var(--dim);
+        margin-bottom: 5px;
+      }
+      .item .txt {
+        font-size: 12.5px;
+        color: var(--muted);
+        line-height: 1.65;
+        word-break: break-word;
+      }
+      footer {
+        margin-top: 48px;
+        font-size: 11.5px;
+        color: var(--dim);
+        line-height: 1.9;
+      }
+      footer a {
+        color: var(--muted);
+      }
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>ctxgauge</h1>
+        <span class="tag">上下文体检 · 全部在本机计算，不上传</span>
+      </header>
+
+      <p class="lede">
+        把对话记录丢进来，先量清楚<b>哪部分在浪费上下文窗口</b>：完全重复的块、改写过的近重复块，
+        以及<b>压在中段</b>的硬约束——模型最容易忽略的位置。<br />
+        只报能算准的：重复是<b>可证明</b>的，相似度是<b>算出来的</b>，不猜 token 数，也不替你决定删什么。
+      </p>
+
+      <div id="drop">
+        <div class="big">拖一个文件进来，或点击选择</div>
+        <div class="small">
+          支持 .jsonl / .json / .txt —— OpenAI messages、Claude Code 会话日志、纯文本都行
+        </div>
+        <input id="file" type="file" accept=".jsonl,.json,.txt,.log,.md,text/*" />
+      </div>
+
+      <textarea
+        id="paste"
+        placeholder="也可以直接粘贴一段上下文（纯文本即可）…"
+      ></textarea>
+      <div class="row">
+        <button class="primary" id="run">体检这段</button>
+        <button id="sample">看一个示例</button>
+        <span class="tag" id="status"></span>
+      </div>
+      <div class="err hidden" id="err"></div>
+
+      <div id="result">
+        <div class="verdict">
+          <div class="num" id="waste-num">–</div>
+          <div class="cap" id="waste-cap"></div>
+          <div class="say" id="say"></div>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <div class="k">完全重复</div>
+            <div class="v" id="c-exact">–</div>
+            <div class="n" id="c-exact-n"></div>
+          </div>
+          <div class="card">
+            <div class="k">近重复</div>
+            <div class="v" id="c-near">–</div>
+            <div class="n" id="c-near-n"></div>
+          </div>
+          <div class="card">
+            <div class="k">工具输出占比</div>
+            <div class="v" id="c-tool">–</div>
+            <div class="n" id="c-tool-n"></div>
+          </div>
+        </div>
+
+        <h2>按来源</h2>
+        <div id="roles"></div>
+
+        <h2>硬约束位置</h2>
+        <div class="axis-note">
+          每条硬约束在上下文里的落点 · <b>中间高亮区 30%–70% 是模型最容易忽略的位置</b>
+        </div>
+        <div class="axis" id="axis">
+          <div class="mid"></div>
+          <div class="scale"><span>0%</span><span>50%</span><span>100%</span></div>
+        </div>
+        <div id="constraints" style="margin-top: 14px"></div>
+
+        <h2>最值得先删的几段</h2>
+        <div id="groups"></div>
+      </div>
+
+      <footer>
+        零依赖 · MIT · 源码与 CLI 在
+        <a href="https://github.com/wulier-arch/ctxgauge">github.com/wulier-arch/ctxgauge</a><br />
+        页面上的一切计算都在你的浏览器里完成，文件不会被上传到任何服务器。
+      </footer>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

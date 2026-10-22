@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>ctxgauge · og card</title>
+    <style>
+      :root {
+        --bg: #0b0e13;
+        --panel: #11161e;
+        --line: #232b36;
+        --text: #e6edf3;
+        --muted: #8b98a5;
+        --dim: #5c6773;
+        --green: #4ade80;
+        --amber: #fbbf24;
+        --blue: #60a5fa;
+        --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--mono);
+      }
+      body {
+        background-image: radial-gradient(circle at 15% -10%, #1b2534 0%, transparent 55%),
+          radial-gradient(circle at 95% 110%, #16281f 0%, transparent 50%);
+        background-repeat: no-repeat;
+        padding: 54px 58px;
+        display: flex;
+        flex-direction: column;
+      }
+      .top {
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+      }
+      .logo {
+        font-size: 30px;
+        letter-spacing: 0.01em;
+      }
+      .sub {
+        font-size: 14px;
+        color: var(--dim);
+      }
+      .lede {
+        font-size: 17px;
+        color: var(--muted);
+        line-height: 1.6;
+        margin: 16px 0 0;
+        max-width: 620px;
+      }
+      .lede b {
+        color: var(--text);
+      }
+      .main {
+        display: flex;
+        gap: 26px;
+        margin-top: 30px;
+        flex: 1;
+      }
+      .report {
+        flex: 1.35;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: linear-gradient(180deg, #131a23, #0e131a);
+        padding: 22px 24px;
+      }
+      .big {
+        font-size: 62px;
+        line-height: 1;
+        letter-spacing: -0.02em;
+        color: #f87171;
+      }
+      .bigcap {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 10px;
+      }
+      .bars {
+        margin-top: 20px;
+      }
+      .bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-bottom: 9px;
+      }
+      .bar span:first-child {
+        width: 74px;
+      }
+      .track {
+        flex: 1;
+        height: 8px;
+        background: #1b232d;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .fill {
+        display: block;
+        height: 100%;
+        border-radius: 4px;
+        background: var(--blue);
+      }
+      .fill.tool {
+        background: var(--amber);
+      }
+      .axis {
+        position: relative;
+        height: 26px;
+        margin-top: 16px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+      .axis .mid {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 30%;
+        width: 40%;
+        background: rgba(251, 191, 36, 0.14);
+        border-left: 1px solid rgba(251, 191, 36, 0.45);
+        border-right: 1px solid rgba(251, 191, 36, 0.45);
+      }
+      .axis .tick {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--amber);
+      }
+      .axisnote {
+        font-size: 11.5px;
+        color: var(--dim);
+        margin-top: 8px;
+      }
+      .axisnote b {
+        color: var(--amber);
+        font-weight: 500;
+      }
+      .side {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+        padding: 14px 16px;
+      }
+      .card .k {
+        font-size: 10.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--dim);
+      }
+      .card .v {
+        font-size: 20px;
+        margin-top: 6px;
+      }
+      .card .n {
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .foot {
+        margin-top: 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 13px;
+        color: var(--dim);
+      }
+      .foot .url {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <span class="logo">ctxgauge</span>
+      <span class="sub">上下文体检 · 零依赖 · 本机计算</span>
+    </div>
+    <p class="lede">
+      先量清楚你的 LLM 上下文里<b>哪部分在浪费窗口</b>——重复、近重复、以及压在中段的硬约束。
+    </p>
+
+    <div class="main">
+      <div class="report">
+        <div class="big">31.9%</div>
+        <div class="bigcap">1,352 / 4,237 字符是可证明的重复</div>
+        <div class="bars">
+          <div class="bar">
+            <span>tool</span><span class="track"><span class="fill tool" style="width: 84.9%"></span></span><span>84.9%</span>
+          </div>
+          <div class="bar">
+            <span>assistant</span><span class="track"><span class="fill" style="width: 10.0%"></span></span><span>10.0%</span>
+          </div>
+          <div class="bar">
+            <span>system</span><span class="track"><span class="fill" style="width: 3.0%"></span></span><span>3.0%</span>
+          </div>
+          <div class="bar">
+            <span>user</span><span class="track"><span class="fill" style="width: 2.0%"></span></span><span>2.0%</span>
+          </div>
+        </div>
+        <div class="axis">
+          <div class="mid"></div>
+          <div class="tick" style="left: 43.0%"></div>
+        </div>
+        <div class="axisnote">硬约束落在 <b>43.0%</b> · 中段 30%–70% 是模型最容易忽略的位置</div>
+      </div>
+
+      <div class="side">
+        <div class="card">
+          <div class="k">完全重复</div>
+          <div class="v">可证明</div>
+          <div class="n">一模一样的块，删一份不损失信息</div>
+        </div>
+        <div class="card">
+          <div class="k">近重复</div>
+          <div class="v">5-gram Jaccard</div>
+          <div class="n">相似度算出来，不是感觉像</div>
+        </div>
+        <div class="card">
+          <div class="k">不做什么</div>
+          <div class="v">不猜 token</div>
+          <div class="n">没有 tokenizer 就不给数字</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>MIT · Node ≥ 20 · 浏览器版零安装</span>
+      <span class="url">github.com/wulier-arch/ctxgauge</span>
+    </div>
+  </body>
+</html>

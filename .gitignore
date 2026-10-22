@@ -1,0 +1,32 @@
+# 依赖：本项目坚持零依赖，出现 node_modules 视为异常
+node_modules/
+yarn.lock
+pnpm-lock.yaml
+
+# 缓存
+.cache/
+.npm/
+
+# 环境与密钥 —— 切勿提交
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# 日志
+*.log
+
+# 编辑器与 IDE
+.vscode/
+.idea/
+*.swp
+
+# 系统文件
+.DS_Store
+._*
+Thumbs.db
+
+# 本地试跑产物
+out/
+*.tmp
