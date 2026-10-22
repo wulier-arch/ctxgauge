@@ -12,6 +12,8 @@
 
 全部在本机跑完，不上传、不调用任何模型、不猜 token 数。
 
+![ctxgauge 体检报告](web/screenshot.png)
+
 ---
 
 ## 为什么需要它
